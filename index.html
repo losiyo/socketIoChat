@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Chat</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		body:{
+			font: 13px Helvetica, Arial;
+			background: #C8C8C8;
+		}
+		form{
+			width: 100%;
+			position: fixed;
+			bottom: 0;
+			padding: 3px;
+			border-top: 1px solid #D8D8D8;
+		}
+		form input{
+			width: 100%;
+			padding: 10px;
+			border: 0;
+		}
+		#messages{
+			width: 100%;
+			padding: 0 30px;
+			list-style-type: none;
+		}
+		#messages li{
+			padding: 5px 10px;
+		}
+		#messages li:nth-child(odd){
+			background-color: #eee;
+		}
+		#messages p{
+			height: 30px;
+			line-height: 30px;
+			color: #A8A8A8;
+			text-align: center;
+			font-size: 12px;
+			clear: right;
+		}
+		html, body{
+			height: 100%;
+			background: #FFF;
+		}
+		#loginBox{
+			width: 100%;
+			height: 100%;
+			background: rgba(0,0,0,0.1);
+			position: absolute;
+			left: 0;
+			top: 0;
+			z-index: 99;
+			vertical-align: middle;
+			text-align: center;
+			overflow-x: hidden;
+			overflow-y: auto;
+			white-space: nowrap;
+		}
+		#login{
+			min-width: 20em;
+			min-height: 15em;
+			background: #FFF;
+			border-radius: 3px;
+			position: relative;
+			top: 50%;
+			margin-top: -100px;
+			display: inline-block;
+			box-shadow: 0 0 5px rgba(0,0,0,0.2);
+			padding: 10px 20px;
+		}
+		.uname{
+			font-size: 25px;
+			display: block;
+			line-height: 1em;
+			margin: 30px 0;
+		}
+		#username{
+			width: 260px;
+			box-sizing: content-box;
+			height: 14px;
+			line-height: 14px;
+			display: block;
+			border: 1px solid #ccc;
+			padding: 12px 40px 12px 10px;
+			box-shadow: inset 0 0 4px rgba(0,0,0,0.16);
+		}
+		#sendName{
+			width: 100%;
+			color: white;
+			height: 40px;
+			border: none;
+			border-radius: 3px;
+			background: #56bbe8;
+			margin-top: 20px;
+			cursor: pointer;
+			font-size: 15px;
+		}
+		header{
+			width: 100%;
+			height: 40px;
+			line-height: 40px;
+			background: #202020;
+			text-align: center;
+			color: white;
+		}
+		/*.userlists{
+			position: relative;
+		}*/
+		.userlist{
+			height: 40px;
+			line-height: 40px;
+		}
+		.right, .left{
+\			margin: 20px;
+			clear: right;
+			max-width: 55%;
+		}
+		.right{
+			float: right;
+		}
+		.right span, .left span{
+			display: block;
+			height: 25px;
+			line-height: 25px;
+			color: #686868;
+			font-size: 12px;
+			padding: 5px;
+		}
+		.left span, .left div{
+			text-align: left;
+		}
+		.right span, .right div{
+			text-align: right;
+		}
+		.right div, .left div{
+			display: inline-block;
+			min-width: 30px;
+			box-sizing: border-box;
+			padding: 15px 10px;
+			font-size: 15px;
+			border-radius: 5px;
+		}
+		.left div{
+			background: #E8E8E8;
+		}
+		.right div{
+			background: #CCFFFF;
+		}
+	</style>
+</head>
+<body>
+	<div id="loginBox">
+		<div id="login">
+			<p class="uname">请输入昵称</p>
+			<input type="text" placeholder="请输入用户名" id="username" name="username"/>
+			<input id="sendName" type="button" value="提交"/>
+		</div>
+	</div>
+	<div id="showBox">
+		<header>WebSocket聊天室(<span id="userCount"></span>)</header>
+		<ul id="messages"></ul>
+		<form>
+			<input id="m" autocomplete="off" />
+		</form>
+	</div>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+	<script>
+		$(document).ready(function(){
+			var chat = new Chat();
+			chat.init();
+		});
+
+		var Chat = function(){
+			this.socket = null;
+		};
+
+		Chat.prototype.init = function(){
+			var that = this;
+
+			var userid = this.getUid();
+			var username = null;
+
+			this.socket = io();
+
+			//提交用户名
+			$("#sendName").click(function(){
+				username = $("#username").val();
+
+				if(username.trim().length > 0){
+					$("#loginBox").hide();
+					$("#username").val('');
+
+					//告诉服务器端有用户登录
+					that.socket.emit('login', { userid: userid, username: username });
+				}
+			});
+
+			//监听用户登录
+			that.socket.on('login', function(o){
+				that.updateSysMes(o, 'login');
+			});
+
+			//监听用户退出
+			that.socket.on('logout', function(o){
+				that.updateSysMes(o, 'logout');
+			});
+
+			//监听消息
+			that.socket.on('message', function(obj){
+				var isMe = (obj.username == username) ? true : false;
+
+				var contentDiv = $('<div>').text(obj.content);
+				var usernameDiv = $('<span>').text(obj.username);
+				var section = $('<section>');
+
+				if(isMe){
+					section.addClass('right');
+					section.append(usernameDiv);
+					section.append(contentDiv);
+				}else{
+					section.addClass('left');
+					section.append(usernameDiv);
+					section.append(contentDiv);
+				}
+
+				$("#messages").append(section);
+			});
+
+			//发送消息
+			$('form').submit(function(e){
+
+				e.preventDefault();
+
+				var content = $("#m").val();
+				var obj = {
+					userid: userid,
+					username: username,
+					content: content
+				};
+
+				that.socket.emit('message', obj);
+				$('#m').val('');
+				return false;
+			});
+
+		};
+
+		//通过当前时间和随机数获取用户ID
+		Chat.prototype.getUid = function(){
+			return new Date().getTime() + "" + Math.floor(Math.random() * 899 + 1000); 
+		};
+
+		//每次登录和退出时更新信息
+		Chat.prototype.updateSysMes = function(o, loginMes){
+			var onlineUsers = o.onlineUsers;
+			var onlineCount = o.onlineCount;
+			var user = o.user;
+			var action = null;
+
+			//更新在线人数
+			$('#userCount').text(onlineCount);
+
+			//更新在线列表
+			/*$(".userlists").empty();
+			for(var uid in onlineUsers){
+				if(onlineUsers.hasOwnProperty(uid)){
+					$(".userLists").append($('<li>').val(onlineUsers[uid]));
+				}
+			}*/
+
+			//添加系统消息
+			loginMes == 'login' ? action = '加入了聊天室' : action = '退出了聊天室';
+			$("#messages").append($('<p>').text(user.username + action));
+		};
+	</script>
+</body>
+</html>
