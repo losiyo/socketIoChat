@@ -109,9 +109,6 @@
 			text-align: center;
 			color: white;
 		}
-		/*.userlists{
-			position: relative;
-		}*/
 		.userlist{
 			height: 40px;
 			line-height: 40px;
@@ -266,14 +263,6 @@
 
 			//更新在线人数
 			$('#userCount').text(onlineCount);
-
-			//更新在线列表
-			/*$(".userlists").empty();
-			for(var uid in onlineUsers){
-				if(onlineUsers.hasOwnProperty(uid)){
-					$(".userLists").append($('<li>').val(onlineUsers[uid]));
-				}
-			}*/
 
 			//添加系统消息
 			loginMes == 'login' ? action = '加入了聊天室' : action = '退出了聊天室';
